@@ -1,0 +1,121 @@
+
+import biosppy
+import numpy as np
+import pyhrv
+import pyhrv.tools as tools
+from opensignalsreader import OpenSignalsReader
+import pandas as pd
+from statistics import mean
+
+
+nni_combi = pd.read_excel('AFHF_10m_RRi_1to49.xlsx',na_filter = False)
+
+nni_combi_ms_NaN = np.multiply(nni_combi, 1000)
+
+nni_combi_ms = nni_combi_ms_NaN.fillna('')
+
+thresh = range(50,1010,10)
+current_thresh = []
+
+thresh2 = range(300,1010,10)
+current_thresh = []
+
+import csv
+
+header = ['id', 'nni_diff_mean','nni_diff_min', 'nni_diff_max', 'hr_mean', 'hr_min', 'hr_max','hr_std','sdnn', 'rmssd', 'poincare_1', 'poincare_2', 'poincare_3', 'poincare_4', 'poincare_5','sampen']
+
+for i in thresh:
+    header.append('n' + str(i))
+    
+for i in thresh:
+    header.append('p'+str(i))
+
+for i in thresh2:
+    header.append('l' + str(i))
+
+for i in thresh2:
+    header.append('pl' + str(i))
+
+with open('AFHF_10m_RRi_1to49.csv', 'w') as file:
+
+    writer = csv.writer(file)
+    writer.writerow(header)
+
+    for col in nni_combi_ms.columns:
+        final_results = []
+        print(col)
+        final_results.append(str(col))
+        col_data = list(filter(None, (np.array((nni_combi_ms[col])))))
+
+        import pyhrv.time_domain as td
+        results_diff = td.nni_differences_parameters(col_data)
+        print(results_diff)
+        final_results.append(results_diff[0])
+        final_results.append(results_diff[1])
+        final_results.append(results_diff[2])
+        print(final_results)
+
+        results_hr = td.hr_parameters(col_data)
+        print(results_hr)
+        final_results.append(results_hr[0])
+        final_results.append(results_hr[1])
+        final_results.append(results_hr[2])
+        final_results.append(results_hr[3])
+        print(final_results)
+
+        results_sdnn = td.sdnn(col_data)
+        print(results_sdnn['sdnn'])
+        final_results.append(results_sdnn[0])
+        print(final_results)
+
+        results_rmssd = td.rmssd(col_data)
+        print(results_rmssd['rmssd'])
+        final_results.append(results_rmssd[0])
+        print(final_results)
+
+        import pyhrv.nonlinear as nl
+        results_poincare = nl.poincare(col_data)
+        print(results_poincare)
+        final_results.append(results_poincare[0])
+        final_results.append(results_poincare[1])
+        final_results.append(results_poincare[2])
+        final_results.append(results_poincare[3])
+        final_results.append(results_poincare[4])
+        
+        results_sampen = nl.sample_entropy(col_data)
+        print(results_sampen['sampen'])
+        final_results.append(results_sampen[0])
+        print(final_results)
+
+        for i in thresh:
+            result = td.nnXX(col_data, threshold=i)
+            name = 'nn' + str(i)
+            final_results.append(result[name])
+            print(f"Threshold 1 {i} : {final_results[-1]}")
+            
+            
+        for i in thresh:      
+            result = td.nnXX(col_data, threshold=i)
+            name2 = 'pnn' + str(i)
+            final_results.append(result[name2])
+            print(f"Threshold 2 {i} : {final_results[-1]}")
+             
+        for i in thresh2:
+            count = 0
+            for x in col_data :
+                if x < i:
+                    count = count + 1             
+            result_count= count
+            final_results.append(result_count)
+            print(f"Threshold 3 {i} : {result_count}")
+            
+        for i in thresh2:
+            count = 0
+            for x in col_data :
+                if x < i:
+                    count = count + 1             
+            perresult_count = (count/len(col_data))*100
+            final_results.append(perresult_count)
+            print(f"Threshold 4 {i} : {perresult_count}")           
+                        
+        writer.writerow(final_results)
